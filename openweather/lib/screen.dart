@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-const String _openWeatherApiKey = 'b69dbc6492c3a7d2afc29f48ee9ffeac';
+const String _openWeatherApiKey = String.fromEnvironment('OPENWEATHER_API_KEY');
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -28,6 +28,12 @@ class _WeatherScreenState extends State<WeatherScreen> {
   @override
   void initState() {
     super.initState();
+    if (_openWeatherApiKey.trim().isEmpty) {
+      _isLoading = false;
+      _errorMessage =
+          'Missing API key. Run with --dart-define=OPENWEATHER_API_KEY=your_key';
+      return;
+    }
     _loadWeatherForCity(_selectedLocation);
   }
 
@@ -51,8 +57,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
     });
 
     try {
+      final apiKey = _requireApiKey();
       final uri = Uri.parse(
-        'https://api.openweathermap.org/data/2.5/weather?q=${Uri.encodeComponent(city.trim())}&units=metric&appid=$_openWeatherApiKey',
+        'https://api.openweathermap.org/data/2.5/weather?q=${Uri.encodeComponent(city.trim())}&units=metric&appid=$apiKey',
       );
       final response = await http.get(uri);
 
@@ -116,8 +123,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
     });
 
     try {
+      final apiKey = _requireApiKey();
       final uri = Uri.parse(
-        'https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&units=metric&appid=$_openWeatherApiKey',
+        'https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&units=metric&appid=$apiKey',
       );
       final response = await http.get(uri);
 
@@ -169,8 +177,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
     });
 
     try {
+      final apiKey = _requireApiKey();
       final uri = Uri.parse(
-        'https://api.openweathermap.org/geo/1.0/direct?q=${Uri.encodeComponent(query.trim())}&limit=5&appid=$_openWeatherApiKey',
+        'https://api.openweathermap.org/geo/1.0/direct?q=${Uri.encodeComponent(query.trim())}&limit=5&appid=$apiKey',
       );
       final response = await http.get(uri);
 
@@ -274,7 +283,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       if (decoded is Map<String, dynamic>) {
         final apiMessage = (decoded['message'] as String? ?? '').trim();
         if (response.statusCode == 401) {
-          return 'Invalid OpenWeather API key. Replace the key in lib/screen.dart with a valid key.';
+          return 'Invalid OpenWeather API key. Start with --dart-define=OPENWEATHER_API_KEY=your_key';
         }
         if (apiMessage.isNotEmpty) {
           message =
@@ -283,11 +292,21 @@ class _WeatherScreenState extends State<WeatherScreen> {
       }
     } catch (_) {
       if (response.statusCode == 401) {
-        return 'Invalid OpenWeather API key. Replace the key in lib/screen.dart with a valid key.';
+        return 'Invalid OpenWeather API key. Start with --dart-define=OPENWEATHER_API_KEY=your_key';
       }
     }
 
     return message;
+  }
+
+  String _requireApiKey() {
+    final key = _openWeatherApiKey.trim();
+    if (key.isEmpty) {
+      throw Exception(
+        'Missing API key. Run with --dart-define=OPENWEATHER_API_KEY=your_key',
+      );
+    }
+    return key;
   }
 
   @override
